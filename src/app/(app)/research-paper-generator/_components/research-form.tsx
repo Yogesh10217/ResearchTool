@@ -22,6 +22,9 @@ const formSchema = z.object({
 
 type ResearchFormValues = z.infer<typeof formSchema>;
 
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 2000; // 2 seconds
+
 export function ResearchForm() {
   const [isPending, startTransition] = useTransition();
   const [generatedPaper, setGeneratedPaper] = useState<GenerateResearchPaperOutput | null>(null);
@@ -35,12 +38,36 @@ export function ResearchForm() {
     },
   });
 
+  const attemptGenerationWithRetries = async (
+    data: ResearchFormValues,
+    currentRetries = 0
+  ): Promise<GenerateResearchPaperOutput> => {
+    try {
+      const input: GenerateResearchPaperInput = { topic: data.topic, numPages: data.numPages };
+      const result = await generateResearchPaper(input);
+      return result;
+    } catch (error: any) {
+      const isOverloadedError = error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"));
+      if (isOverloadedError && currentRetries < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY_MS * (2 ** currentRetries);
+        toast({
+          title: `Model Overloaded (Attempt ${currentRetries + 2}/${MAX_RETRIES + 1})`, // User-facing: 1-based index for attempts
+          description: `Retrying in ${delay / 1000} seconds...`,
+        });
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return attemptGenerationWithRetries(data, currentRetries + 1);
+      } else {
+        throw error; // Re-throw if not an overload error or max retries reached
+      }
+    }
+  };
+
+
   const onSubmit: SubmitHandler<ResearchFormValues> = (data) => {
     startTransition(async () => {
       try {
-        setGeneratedPaper(null); // Clear previous results
-        const input: GenerateResearchPaperInput = { topic: data.topic, numPages: data.numPages };
-        const result = await generateResearchPaper(input);
+        setGeneratedPaper(null); 
+        const result = await attemptGenerationWithRetries(data);
         setGeneratedPaper(result);
         toast({
           title: "Research Paper Generated",
@@ -50,7 +77,7 @@ export function ResearchForm() {
         console.error("Error generating research paper:", error);
         let description = "Failed to generate research paper. Please try again.";
         if (error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
-          description = "The AI model is currently overloaded. Please try again in a few moments.";
+          description = `The AI model is still overloaded after ${MAX_RETRIES +1} attempts. Please try again later.`;
         }
         toast({
           title: "Error",
@@ -88,7 +115,7 @@ export function ResearchForm() {
     if (!generatedPaper) return;
     
     const originalDisplayValues: { element: HTMLElement; display: string }[] = [];
-    const elementsToHide = document.querySelectorAll('.no-print, .actions-bar, form, header, nav, aside'); 
+    const elementsToHide = document.querySelectorAll('.no-print, header, nav, aside'); 
     
     elementsToHide.forEach(el => {
         const htmlEl = el as HTMLElement;
@@ -150,13 +177,13 @@ export function ResearchForm() {
       {isPending && (
         <div className="text-center py-8 no-print">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-          <p className="mt-2 text-muted-foreground">Generating your paper, please wait...</p>
+          <p className="mt-2 text-muted-foreground">Generating your paper, please wait... Retries may occur if the model is busy.</p>
         </div>
       )}
 
       {generatedPaper && (
         <Card className="mt-8 shadow-lg">
-          <CardHeader className="actions-bar no-print">
+          <CardHeader className="no-print">
             <CardTitle className="text-2xl text-primary">{generatedPaper.title}</CardTitle>
             <div className="flex space-x-2 pt-2">
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard}><Copy className="mr-2 h-4 w-4" /> Copy All</Button>
@@ -185,4 +212,3 @@ export function ResearchForm() {
     </div>
   );
 }
-

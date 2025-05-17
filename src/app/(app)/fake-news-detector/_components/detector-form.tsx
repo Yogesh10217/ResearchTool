@@ -4,8 +4,9 @@
 import type { DetectFakeNewsInput, DetectFakeNewsOutput } from "@/ai/flows/detect-fake-news";
 import { detectFakeNews } from "@/ai/flows/detect-fake-news";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -14,13 +15,15 @@ import { Loader2, ShieldAlert, ShieldCheck, SearchCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   text: z.string().min(20, "Text must be at least 20 characters long."),
 });
 
 type DetectorFormValues = z.infer<typeof formSchema>;
+
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 2000; // 2 seconds
 
 export function DetectorForm() {
   const [isPending, startTransition] = useTransition();
@@ -34,12 +37,35 @@ export function DetectorForm() {
     },
   });
 
+  const attemptAnalysisWithRetries = async (
+    data: DetectorFormValues,
+    currentRetries = 0
+  ): Promise<DetectFakeNewsOutput> => {
+    try {
+      const input: DetectFakeNewsInput = { text: data.text };
+      const result = await detectFakeNews(input);
+      return result;
+    } catch (error: any) {
+      const isOverloadedError = error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"));
+      if (isOverloadedError && currentRetries < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY_MS * (2 ** currentRetries);
+        toast({
+          title: `Model Overloaded (Attempt ${currentRetries + 2}/${MAX_RETRIES + 1})`, // User-facing: 1-based index
+          description: `Retrying in ${delay / 1000} seconds...`,
+        });
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return attemptAnalysisWithRetries(data, currentRetries + 1);
+      } else {
+        throw error; // Re-throw if not an overload error or max retries reached
+      }
+    }
+  };
+
   const onSubmit: SubmitHandler<DetectorFormValues> = (data) => {
     startTransition(async () => {
       try {
-        setAnalysisResult(null); // Clear previous results
-        const input: DetectFakeNewsInput = { text: data.text };
-        const result = await detectFakeNews(input);
+        setAnalysisResult(null); 
+        const result = await attemptAnalysisWithRetries(data);
         setAnalysisResult(result);
         toast({
           title: "Analysis Complete",
@@ -49,7 +75,7 @@ export function DetectorForm() {
         console.error("Error detecting fake news:", error);
         let description = "Failed to analyze text. Please try again.";
         if (error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
-          description = "The AI model is currently overloaded. Please try again in a few moments.";
+          description = `The AI model is still overloaded after ${MAX_RETRIES + 1} attempts. Please try again later.`;
         }
         toast({
           title: "Error",
@@ -92,7 +118,7 @@ export function DetectorForm() {
       {isPending && (
         <div className="text-center py-8">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-          <p className="mt-2 text-muted-foreground">Analyzing text, please wait...</p>
+          <p className="mt-2 text-muted-foreground">Analyzing text, please wait... Retries may occur if the model is busy.</p>
         </div>
       )}
 
