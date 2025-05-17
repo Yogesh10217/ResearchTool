@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import {
   SidebarProvider,
@@ -26,7 +27,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen">
         <Sidebar collapsible="icon">
           <SidebarHeader className="p-4">
-            <Logo iconSize={6} textSize="lg" />
+            <Link href="/" aria-label="Go to home page">
+              <Logo iconSize={6} textSize="lg" />
+            </Link>
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
@@ -57,7 +60,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <span className="sr-only">Toggle sidebar</span>
               </Button>
             </SidebarTrigger>
-            <Logo iconSize={5} textSize="base" />
+            <Link href="/" aria-label="Go to home page">
+              <Logo iconSize={5} textSize="base" />
+            </Link>
           </header>
           <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
             {children}
