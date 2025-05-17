@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DetectFakeNewsInput, DetectFakeNewsOutput } from "@/ai/flows/detect-fake-news";
@@ -44,11 +45,15 @@ export function DetectorForm() {
           title: "Analysis Complete",
           description: "The text has been analyzed for fake news.",
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error detecting fake news:", error);
+        let description = "Failed to analyze text. Please try again.";
+        if (error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
+          description = "The AI model is currently overloaded. Please try again in a few moments.";
+        }
         toast({
           title: "Error",
-          description: "Failed to analyze text. Please try again.",
+          description: description,
           variant: "destructive",
         });
       }

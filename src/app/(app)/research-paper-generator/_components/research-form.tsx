@@ -46,11 +46,15 @@ export function ResearchForm() {
           title: "Research Paper Generated",
           description: "Your paper has been successfully created.",
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error generating research paper:", error);
+        let description = "Failed to generate research paper. Please try again.";
+        if (error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
+          description = "The AI model is currently overloaded. Please try again in a few moments.";
+        }
         toast({
           title: "Error",
-          description: "Failed to generate research paper. Please try again.",
+          description: description,
           variant: "destructive",
         });
       }
@@ -82,26 +86,18 @@ export function ResearchForm() {
 
   const handleDownloadPdf = () => {
     if (!generatedPaper) return;
-    // This will open the browser's print dialog, where users can choose "Save as PDF"
-    // For more sophisticated PDF generation, a library like jsPDF or pdfmake would be needed.
     
-    // Temporarily hide buttons and other non-content elements for printing
     const originalDisplayValues: { element: HTMLElement; display: string }[] = [];
-    const elementsToHide = document.querySelectorAll('.no-print, .actions-bar, form, header, nav, aside'); // Add more selectors as needed
+    const elementsToHide = document.querySelectorAll('.no-print, .actions-bar, form, header, nav, aside'); 
     
     elementsToHide.forEach(el => {
         const htmlEl = el as HTMLElement;
         originalDisplayValues.push({ element: htmlEl, display: htmlEl.style.display });
         htmlEl.style.display = 'none';
     });
-
-    // Create a printable version (optional, but good for complex layouts)
-    // For now, we'll just print the existing content. A more robust solution
-    // might involve rendering specific content to an iframe for printing.
     
     window.print();
 
-    // Restore hidden elements
     elementsToHide.forEach(el => {
         const htmlEl = el as HTMLElement;
         const original = originalDisplayValues.find(item => item.element === htmlEl);
