@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Download, Loader2, Copy, FileText as FileTextIcon, Printer } from "lucide-react";
+import { Download, Loader2, Copy, FileText as FileTextIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
@@ -78,6 +78,8 @@ export function ResearchForm() {
         let description = "Failed to generate research paper. Please try again.";
         if (error?.message && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
           description = `The AI model is still overloaded after ${MAX_RETRIES +1} attempts. Please try again later.`;
+        } else if (error?.message) {
+          description = error.message;
         }
         toast({
           title: "Error",
@@ -110,38 +112,6 @@ export function ResearchForm() {
     URL.revokeObjectURL(url);
     toast({ title: "Downloaded as TXT" });
   };
-
-  const handleDownloadPdf = () => {
-    if (!generatedPaper) return;
-    
-    const originalDisplayValues: { element: HTMLElement; display: string }[] = [];
-    // Query for HTML Elements specifically for type safety with style access
-    const elementsToHide = document.querySelectorAll<HTMLElement>('.no-print, form, header, nav, aside'); 
-    
-    try {
-      elementsToHide.forEach(el => {
-          originalDisplayValues.push({ element: el, display: el.style.display });
-          el.style.display = 'none';
-      });
-      
-      window.print();
-    } finally {
-      // Ensure elements are always restored, even if window.print() or other code in try block errors.
-      elementsToHide.forEach(el => {
-          const original = originalDisplayValues.find(item => item.element === el);
-          if (original) {
-              el.style.display = original.display;
-          } else {
-            // If for some reason the original display wasn't stored, attempt to reset
-            // This is a fallback, ideally original should always be found
-            el.style.display = ''; 
-          }
-      });
-    }
-
-    toast({ title: "Print to PDF", description: "Use your browser's print dialog to save as PDF." });
-  };
-
 
   return (
     <div className="space-y-8">
@@ -194,7 +164,6 @@ export function ResearchForm() {
             <div className="flex space-x-2 pt-2">
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard}><Copy className="mr-2 h-4 w-4" /> Copy All</Button>
               <Button variant="outline" size="sm" onClick={handleDownloadTxt}><Download className="mr-2 h-4 w-4" /> Download TXT</Button>
-              <Button variant="outline" size="sm" onClick={handleDownloadPdf}><Printer className="mr-2 h-4 w-4" /> Download PDF</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -218,5 +187,3 @@ export function ResearchForm() {
     </div>
   );
 }
-
-    
