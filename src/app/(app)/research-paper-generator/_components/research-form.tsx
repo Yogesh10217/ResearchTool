@@ -51,13 +51,13 @@ export function ResearchForm() {
       if (isOverloadedError && currentRetries < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY_MS * (2 ** currentRetries);
         toast({
-          title: `Model Overloaded (Attempt ${currentRetries + 2}/${MAX_RETRIES + 1})`, // User-facing: 1-based index for attempts
+          title: `Model Overloaded (Attempt ${currentRetries + 2}/${MAX_RETRIES + 1})`,
           description: `Retrying in ${delay / 1000} seconds...`,
         });
         await new Promise(resolve => setTimeout(resolve, delay));
         return attemptGenerationWithRetries(data, currentRetries + 1);
       } else {
-        throw error; // Re-throw if not an overload error or max retries reached
+        throw error;
       }
     }
   };
@@ -115,23 +115,29 @@ export function ResearchForm() {
     if (!generatedPaper) return;
     
     const originalDisplayValues: { element: HTMLElement; display: string }[] = [];
-    const elementsToHide = document.querySelectorAll('.no-print, header, nav, aside'); 
+    // Query for HTML Elements specifically for type safety with style access
+    const elementsToHide = document.querySelectorAll<HTMLElement>('.no-print, form, header, nav, aside'); 
     
-    elementsToHide.forEach(el => {
-        const htmlEl = el as HTMLElement;
-        originalDisplayValues.push({ element: htmlEl, display: htmlEl.style.display });
-        htmlEl.style.display = 'none';
-    });
-    
-    window.print();
-
-    elementsToHide.forEach(el => {
-        const htmlEl = el as HTMLElement;
-        const original = originalDisplayValues.find(item => item.element === htmlEl);
-        if (original) {
-            htmlEl.style.display = original.display;
-        }
-    });
+    try {
+      elementsToHide.forEach(el => {
+          originalDisplayValues.push({ element: el, display: el.style.display });
+          el.style.display = 'none';
+      });
+      
+      window.print();
+    } finally {
+      // Ensure elements are always restored, even if window.print() or other code in try block errors.
+      elementsToHide.forEach(el => {
+          const original = originalDisplayValues.find(item => item.element === el);
+          if (original) {
+              el.style.display = original.display;
+          } else {
+            // If for some reason the original display wasn't stored, attempt to reset
+            // This is a fallback, ideally original should always be found
+            el.style.display = ''; 
+          }
+      });
+    }
 
     toast({ title: "Print to PDF", description: "Use your browser's print dialog to save as PDF." });
   };
@@ -212,3 +218,5 @@ export function ResearchForm() {
     </div>
   );
 }
+
+    
