@@ -8,7 +8,7 @@ const geistSans = GeistSans;
 const geistMono = GeistMono;
 
 export const metadata: Metadata = {
-  title: 'Insight Forge',
+  title: 'Research Tool',
   description: 'AI-Powered Research Intelligence Suite by Gemini',
 };
 

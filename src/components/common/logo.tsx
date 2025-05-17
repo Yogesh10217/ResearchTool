@@ -8,10 +8,10 @@ interface LogoProps {
 
 export function Logo({ className, iconSize = 8, textSize = "xl" }: LogoProps) {
   return (
-    <div className={`flex items-center gap-2 ${className}`} aria-label="Insight Forge Logo">
+    <div className={`flex items-center gap-2 ${className}`} aria-label="Research Tool Logo">
       <BrainCircuit className={`h-${iconSize} w-${iconSize} text-primary`} />
       <span className={`text-${textSize} font-semibold text-foreground`}>
-        Insight Forge
+        Research Tool
       </span>
     </div>
   );
