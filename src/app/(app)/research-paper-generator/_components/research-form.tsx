@@ -1,16 +1,16 @@
+
 "use client";
 
 import type { GenerateResearchPaperInput, GenerateResearchPaperOutput } from "@/ai/flows/generate-research-paper";
 import { generateResearchPaper } from "@/ai/flows/generate-research-paper";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Download, Loader2, Copy, FileText as FileTextIcon, Share2 } from "lucide-react";
+import { Download, Loader2, Copy, FileText as FileTextIcon, Printer } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
@@ -80,11 +80,44 @@ export function ResearchForm() {
     toast({ title: "Downloaded as TXT" });
   };
 
+  const handleDownloadPdf = () => {
+    if (!generatedPaper) return;
+    // This will open the browser's print dialog, where users can choose "Save as PDF"
+    // For more sophisticated PDF generation, a library like jsPDF or pdfmake would be needed.
+    
+    // Temporarily hide buttons and other non-content elements for printing
+    const originalDisplayValues: { element: HTMLElement; display: string }[] = [];
+    const elementsToHide = document.querySelectorAll('.no-print, .actions-bar, form, header, nav, aside'); // Add more selectors as needed
+    
+    elementsToHide.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        originalDisplayValues.push({ element: htmlEl, display: htmlEl.style.display });
+        htmlEl.style.display = 'none';
+    });
+
+    // Create a printable version (optional, but good for complex layouts)
+    // For now, we'll just print the existing content. A more robust solution
+    // might involve rendering specific content to an iframe for printing.
+    
+    window.print();
+
+    // Restore hidden elements
+    elementsToHide.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        const original = originalDisplayValues.find(item => item.element === htmlEl);
+        if (original) {
+            htmlEl.style.display = original.display;
+        }
+    });
+
+    toast({ title: "Print to PDF", description: "Use your browser's print dialog to save as PDF." });
+  };
+
 
   return (
     <div className="space-y-8">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 no-print">
           <FormField
             control={form.control}
             name="topic"
@@ -119,7 +152,7 @@ export function ResearchForm() {
       </Form>
 
       {isPending && (
-        <div className="text-center py-8">
+        <div className="text-center py-8 no-print">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
           <p className="mt-2 text-muted-foreground">Generating your paper, please wait...</p>
         </div>
@@ -127,14 +160,12 @@ export function ResearchForm() {
 
       {generatedPaper && (
         <Card className="mt-8 shadow-lg">
-          <CardHeader>
+          <CardHeader className="actions-bar no-print">
             <CardTitle className="text-2xl text-primary">{generatedPaper.title}</CardTitle>
             <div className="flex space-x-2 pt-2">
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard}><Copy className="mr-2 h-4 w-4" /> Copy All</Button>
               <Button variant="outline" size="sm" onClick={handleDownloadTxt}><Download className="mr-2 h-4 w-4" /> Download TXT</Button>
-              {/* Placeholder for more advanced export/share */}
-              <Button variant="outline" size="sm" onClick={() => alert("PDF export coming soon!")}><Download className="mr-2 h-4 w-4" /> PDF (Soon)</Button>
-              <Button variant="outline" size="sm" onClick={() => alert("Share feature coming soon!")}><Share2 className="mr-2 h-4 w-4" /> Share (Soon)</Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadPdf}><Printer className="mr-2 h-4 w-4" /> Download PDF</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -158,3 +189,4 @@ export function ResearchForm() {
     </div>
   );
 }
+
