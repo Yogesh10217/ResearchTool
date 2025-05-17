@@ -13,6 +13,7 @@ import { Loader2, ShieldAlert, ShieldCheck, SearchCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { z } from "zod";
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   text: z.string().min(20, "Text must be at least 20 characters long."),
