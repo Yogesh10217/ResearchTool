@@ -81,30 +81,31 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState)
         }
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        }
       },
       [setOpenProp, open]
     )
 
     React.useEffect(() => {
-      // Initialize state from cookie on client mount
-      const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
-        ?.split('=')[1];
-      if (cookieValue) {
-        const cookieOpenState = cookieValue === 'true';
-        if (openProp === undefined) { // Only set if not controlled
-            if (isMobile) {
-                // For mobile, cookie might control a different state if needed,
-                // but usually, mobile sidebar is ephemeral.
-                // For now, let's assume cookie primarily drives desktop `open` state.
-            } else {
-                 _setOpen(cookieOpenState);
-            }
+      if (typeof document !== 'undefined') {
+        const cookieValue = document.cookie
+          .split('; ')
+          .find(row => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+          ?.split('=')[1];
+        if (cookieValue) {
+          const cookieOpenState = cookieValue === 'true';
+          if (openProp === undefined) { 
+              if (isMobile) {
+                  // For mobile, cookie might control a different state if needed,
+                  // but usually, mobile sidebar is ephemeral.
+              } else {
+                   _setOpen(cookieOpenState);
+              }
+          }
         }
       }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isMobile, openProp]);
 
 
@@ -124,9 +125,10 @@ const SidebarProvider = React.forwardRef<
           toggleSidebar()
         }
       }
-
-      window.addEventListener("keydown", handleKeyDown)
-      return () => window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== 'undefined') {
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+      }
     }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
@@ -274,25 +276,29 @@ const Sidebar = React.forwardRef<
 Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
-  HTMLButtonElement, // Keep as HTMLButtonElement as Slot ultimately renders the child or Button.
+  HTMLButtonElement,
   React.ComponentProps<typeof Button> & { asChild?: boolean }
 >(({ className, onClick, children, asChild = false, ...restProps }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   const handleTriggerClick = (event: React.MouseEvent<HTMLElement>) => {
-    onClick?.(event); // Call onClick passed to SidebarTrigger itself
+    if (onClick) {
+      onClick(event);
+    }
     // If the child passed to Slot has its own onClick, Slot handles invoking it.
     toggleSidebar();
   };
 
   if (asChild && React.Children.count(children) === 1) {
+    // Defensively remove data-sidebar from restProps to ensure our explicit one takes precedence.
+    const { ["data-sidebar"]: _removedDataSidebar, ...otherRestProps } = restProps;
     return (
       <Slot
         ref={ref}
         onClick={handleTriggerClick}
-        data-sidebar="trigger" // Ensure attribute is present
-        className={className} // Pass SidebarTrigger's className to Slot for merging
-        {...restProps} // Pass other props like data-attributes
+        data-sidebar="trigger" 
+        className={className} 
+        {...otherRestProps} 
       >
         {children}
       </Slot>
@@ -302,15 +308,19 @@ const SidebarTrigger = React.forwardRef<
   return (
     <Button
       ref={ref}
-      data-sidebar="trigger" // Attribute is present
+      data-sidebar="trigger" 
       variant="ghost"
       size="icon"
       className={cn("h-7 w-7", className)}
       onClick={handleTriggerClick}
-      {...restProps}
+      {...restProps} 
     >
-      <PanelLeft />
-      <span className="sr-only">Toggle Sidebar</span>
+      {children || ( // Ensure default children if none provided and not asChild
+        <>
+          <PanelLeft />
+          <span className="sr-only">Toggle Sidebar</span>
+        </>
+      )}
     </Button>
   );
 });
